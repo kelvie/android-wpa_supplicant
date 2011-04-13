@@ -17,7 +17,7 @@
 
 LOCAL_PATH := $(call my-dir)
 
-WPA_BUILD_SUPPLICANT := false
+WPA_BUILD_SUPPLICANT := true
 ifneq ($(TARGET_SIMULATOR),true)
   ifneq ($(BOARD_WPA_SUPPLICANT_DRIVER),)
     WPA_BUILD_SUPPLICANT := true
