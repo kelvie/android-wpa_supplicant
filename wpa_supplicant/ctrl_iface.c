@@ -341,9 +341,14 @@ static int wpa_supplicant_ctrl_iface_status(struct wpa_supplicant *wpa_s,
 					ssid_len = _res;
 				_ssid = ssid_buf;
 			}
-			ret = os_snprintf(pos, end - pos, "ssid=%s\nid=%d\n",
-					  wpa_ssid_txt(_ssid, ssid_len),
+			if (ssid->mode == IEEE80211_MODE_IBSS)
+				ret = os_snprintf(pos, end - pos, "ssid=%s%s\nid=%d\n",
+					  "(*)", wpa_ssid_txt(_ssid, ssid_len),
 					  ssid->id);
+			else
+				ret = os_snprintf(pos, end - pos, "ssid=%s\nid=%d\n",
+							wpa_ssid_txt(_ssid, ssid_len),
+							ssid->id);
 			if (ret < 0 || ret >= end - pos)
 				return pos - buf;
 			pos += ret;
@@ -777,12 +782,7 @@ static int wpa_supplicant_ctrl_iface_scan_result(
 			return -1;
 		pos += ret;
 	}
-	if (res->caps & IEEE80211_CAP_IBSS) {
-		ret = os_snprintf(pos, end - pos, "[IBSS]");
-		if (ret < 0 || ret >= end - pos)
-			return -1;
-		pos += ret;
-	}
+
     /* Just to make the fields line up nicely when printed */
 	if (!ie && !ie2) {
 		ret = os_snprintf(pos, end - pos, "\t");
@@ -791,8 +791,13 @@ static int wpa_supplicant_ctrl_iface_scan_result(
 		pos += ret;
 	}
 	ie = wpa_scan_get_ie(res, WLAN_EID_SSID);
-	ret = os_snprintf(pos, end - pos, "\t%s",
-			  ie ? wpa_ssid_txt(ie + 2, ie[1]) : "");
+
+	if (res->caps & IEEE80211_CAP_IBSS)
+		ret = os_snprintf(pos, end - pos, "\t%s%s", "(*)",
+                          wpa_ssid_txt(ie + 2, ie[1]));
+	else
+            ret = os_snprintf(pos, end - pos, "\t%s",
+                              ie ? wpa_ssid_txt(ie + 2, ie[1]) : "");
 	if (ret < 0 || ret >= end - pos)
 		return -1;
 	pos += ret;
@@ -1083,6 +1088,18 @@ static int wpa_supplicant_ctrl_iface_set_network(
 		wpa_printf(MSG_DEBUG, "CTRL_IFACE: Could not find network "
 			   "id=%d", id);
 		return -1;
+	}
+	if (os_strcmp(name, "ssid") == 0) {
+		// check prefix
+		if ((value[0] == '"') && (os_strncmp(value+1, "(*)", 3) == 0)) {
+			if (wpa_config_set(ssid, "mode", "1", 0) < 0) {
+				wpa_printf(MSG_DEBUG, "CTRL_IFACE: failed to set IBSS on '%s'",
+					  value);
+				return -1;
+			}
+			value += 3;
+			value[0] = '"';
+		}
 	}
 
 	if (wpa_config_set(ssid, name, value, 0) < 0) {

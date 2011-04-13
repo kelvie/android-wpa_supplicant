@@ -578,7 +578,8 @@ wpa_supplicant_select_bss_non_wpa(struct wpa_supplicant *wpa_s,
 				continue;
 			}
 
-			if (bss->caps & IEEE80211_CAP_IBSS) {
+			if (bss->caps & IEEE80211_CAP_IBSS
+				&& ssid->mode != IEEE80211_MODE_IBSS) {
 				wpa_printf(MSG_DEBUG, "   skip - "
 					   "IBSS (adhoc) network");
 				continue;
